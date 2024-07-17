@@ -2,7 +2,7 @@
 title: Modelling traffic in Capetown
 format: gfm
 execute: 
-  cache: refresh
+  cache: true
   echo: false
   message: false
   warning: false
@@ -31,7 +31,8 @@ tmap_mode("view")
 
 ```{r}
 #| label: case-study-area
-case_study_area = zonebuilder::zb_zone("Cape Town", n_circles = 4)
+# case_study_area = zonebuilder::zb_zone("Cape Town", n_circles = 4) # 10 km radius
+case_study_area = zonebuilder::zb_zone("Cape Town", n_circles = 6) # 21 km radius
 ```
 
 ```{r}
@@ -82,8 +83,11 @@ graph = dodgr::weight_streetnet(streetnet, wt_profile = "motorcar", keep_cols = 
 
 ```{r}
 #| label: post-processing
+clear_dodgr_cache()
 graph = dodgr::dodgr_deduplicate_graph(graph)
+# (dodgr:::duplicated_edge_check (graph))
 graph_contracted = dodgr::dodgr_contract_graph(graph)
+dodgr:::duplicated_edge_check(graph_contracted)
 nrow(graph_contracted) / nrow(graph) # 1/3rd size
 ```
 
@@ -124,6 +128,25 @@ graph_joined_1km |>
   geom_sf(aes(colour = centrality)) +
   scale_colour_viridis_c(transform = "log") +
   theme_void()
+```
+
+Let's plot the road segments with the top 1% of centrality values:
+
+```{r}
+#| label: plot-centrality-top-30
+graph_joined |>
+#   filter(centrality > quantile(centrality, 0.70, na.rm = TRUE)) |>
+  ggplot() +
+  geom_sf(aes(alpha = log(centrality))) +
+  theme_void()
+```
+
+```{r}
+#| label: centrality-distribution
+graph_joined |>
+  ggplot() +
+  geom_histogram(aes(centrality)) +
+  scale_x_log10() 
 ```
 
 

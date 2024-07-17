@@ -22,6 +22,12 @@
 
 ![](README_files/figure-commonmark/plot-centrality-1.png)
 
+Let’s plot the road segments with the top 1% of centrality values:
+
+![](README_files/figure-commonmark/plot-centrality-top-30-1.png)
+
+![](README_files/figure-commonmark/centrality-distribution-1.png)
+
 The dataset with the centrality added is as follows:
 
 | geom_num | edge_id | from_id | from_lon | from_lat | to_id | to_lon | to_lat | d | d_weighted | highway | lanes | way_id | osm_id | lanes.1 | lit | maxspeed | oneway | time | time_weighted | component | centrality |
