@@ -1,0 +1,137 @@
+---
+title: Modelling traffic in Capetown
+format: gfm
+execute: 
+  cache: refresh
+  echo: false
+  message: false
+  warning: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+if (!require("rem#| otes")) install.packages("remotes")
+pkgs = c(
+    "sf",
+    "tidyverse",
+    "osmextract",
+    "zonebuilder",
+    "dodgr",
+    "tmap",
+    "webshot2",
+    "geodist"
+)
+remotes::install_cran(pkgs)
+sapply(pkgs, require, character.only = TRUE)
+tmap_mode("view")
+```
+
+```{r}
+#| label: case-study-area
+case_study_area = zonebuilder::zb_zone("Cape Town", n_circles = 4)
+```
+
+```{r}
+m = qtm(case_study_area)
+```
+
+```{r}
+```
+```{r}
+#| eval: false
+streetnet = dodgr::dodgr_streetnet(
+    sf::st_bbox(case_study_area)
+)
+```
+
+```{r}
+# To overcome this issue:
+# Error: Overpass query unavailable without internet
+assign("has_internet_via_proxy", TRUE, environment(curl::has_internet))
+```
+
+```{r}
+if (!file.exists("streetnet.rds")) {
+    streetnet = dodgr::dodgr_streetnet(
+        sf::st_bbox(case_study_area)
+    )
+    saveRDS(streetnet, "streetnet.rds")
+}
+streetnet = readRDS("streetnet.rds")
+```
+
+
+```{r}
+#| label: convert-to-graph
+# names(streetnet) many OSM tags
+# graph = dodgr::weight_streetnet(streetnet)
+cols_to_keep = c(
+    "osm_id",
+    "highway",
+    "oneway",
+    "maxspeed",
+    "lanes",
+    "lit"
+)
+graph = dodgr::weight_streetnet(streetnet, wt_profile = "motorcar", keep_cols = cols_to_keep)
+```
+
+
+```{r}
+#| label: post-processing
+graph = dodgr::dodgr_deduplicate_graph(graph)
+graph_contracted = dodgr::dodgr_contract_graph(graph)
+nrow(graph_contracted) / nrow(graph) # 1/3rd size
+```
+
+
+```{r}
+#| label: centrality-calc
+graph_centrality = dodgr::dodgr_centrality(graph_contracted)
+```
+
+
+```{r}
+graph_sf = dodgr::dodgr_to_sf(graph)
+```
+
+
+```{r}
+#| label: prepare-df-centrality
+names(graph_centrality)
+df_centrality =  tibble(
+    edge_id = graph_centrality$edge_id,
+    centrality = graph_centrality$centrality
+)
+head(df_centrality)
+```
+
+
+```{r}
+graph_joined = left_join(graph_sf, df_centrality)
+```
+
+
+```{r}
+#| label: plot-centrality
+case_study_area_1km = case_study_area[1, ]
+graph_joined_1km = graph_joined[case_study_area_1km, op = sf::st_within]
+graph_joined_1km |>
+  ggplot() +
+  geom_sf(aes(colour = centrality)) +
+  scale_colour_viridis_c(transform = "log") +
+  theme_void()
+```
+
+
+The dataset with the centrality added is as follows:
+
+```{r}
+graph_joined |>
+  sf::st_drop_geometry() |>
+  head() |>
+  knitr::kable()
+```
+
+We can proceed to generate a model of traffic based on the centrality of the roads if we have a training dataset with traffic data.
