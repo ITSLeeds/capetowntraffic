@@ -11,7 +11,9 @@ execute:
 ```{r}
 #| label: setup
 #| include: false
-if (!require("rem#| otes")) install.packages("remotes")
+# Set cran mirror:
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+if (!require("remotes")) install.packages("remotes")
 pkgs = c(
     "sf",
     "tidyverse",
